@@ -1,0 +1,18 @@
+1=> creat the domain
+2=> go in s3
+3 create bucket same name as domain name
+4 upload the files
+5 make this files public
+6 go to properties 
+7 click on static website hosting then fill name of index document and error document if you have
+8 save it
+9 click on bucket policy
+10 search on google sample s3 bucket policy and copy policy on that and pest it in bucket policy
+   and change bucketname and save it
+11 go to servicess
+12 search rout53 click on that then click on Dns managment then enter domain name which we created and click on create
+13 then go to website where we created custom domain in that  manage domain then click on nameserver then click custom name server.
+14 add name server from aws without dot(.) one by one and click on change name server 
+15 go to aws click on create record set click on alies yes add tergetname same as domain name click on create
+16 go to new tab and serch website it will be open
+
