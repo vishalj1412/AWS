@@ -1,0 +1,63 @@
+---
+ - hosts: 10.0.1.200
+   become: yes
+   tasks:
+       - name: install python3-pip
+         apt:
+           name: python3-pip
+           state: latest
+           name: python3-venv
+           state: latest
+           name: libmysqlclient-dev
+           state: latest
+       - name: install virtual env
+         pip:
+            name: pip
+            executable: pip3.8
+            state: forcereinstall
+            name: virtualenv
+            executable: pip3
+            name: freeze
+            executable: pip3
+            name: wheel
+            executable: pip3
+       - name: install requirements
+         pip:
+            requirements: /home/ubuntu/new/requirements.txt
+            virtualenv: /home/ubuntu/new/venv
+       - name: install mysqlclient
+         pip:
+            name: mysqlclient
+            virtualenv: /home/ubuntu/new/venv
+       - file:
+            path: /home/ubuntu/new/fundoo/manage.py
+            mode: '0744'
+       - name: miagrate
+         django_manage:
+            command: createcachetable
+            app_path: /home/ubuntu/new/fundoo
+            pythonpath: /home/ubuntu/new/fundoo/fundoo
+            virtualenv: /home/ubuntu/new/venv
+
+       - name: miagrate
+         django_manage:
+            command: migrate
+            app_path: /home/ubuntu/new/fundoo
+            pythonpath: /home/ubuntu/new/fundoo/fundoo
+            virtualenv: /home/ubuntu/new/venv
+
+       - name: Copying gunicorn configurations to chatapp
+         copy:
+            src: /home/ubuntu/gunicorn.service
+            dest: /etc/systemd/system/gunicorn.service
+       - name: restart gunicorn srvice
+         systemd:
+              name: gunicorn
+              daemon_reload: yes
+              state: started
+              enabled: yes
+
+       - name: restart gunicorn srvice
+         systemd:
+             name: gunicorn
+             state: restarted
