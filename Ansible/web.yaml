@@ -1,0 +1,26 @@
+--- #(playbook for deploy django chat app)
+ - name: config  backend  servers
+   hosts: 10.0.0.94
+   remote_user: ubuntu
+   become: yes
+   gather_facts: yes
+   tasks:
+    - name: install package for chat app
+      action: apt name=nginx state=present
+    - name: Copy nginx configuration file
+      copy:
+       src: /home/ubuntu/chatapp
+       dest: /etc/nginx/sites-available/chatapp
+    - name: Restart nginx
+      service:
+       name: nginx
+       state: started
+    - name: For enabling nginx sites enabled
+      file:
+        src: /etc/nginx/sites-available/chatapp
+        dest: /etc/nginx/sites-enabled/default
+        state: link
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted

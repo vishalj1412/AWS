@@ -1,0 +1,9 @@
+---
+ - hosts: 10.0.1.200
+   tasks:
+   - name: Clone a github repository
+     git:
+       repo: https://github.com/vishalj1412/new-chat-app
+       dest: /home/ubuntu/new/
+       clone: yes
+       update: yes
