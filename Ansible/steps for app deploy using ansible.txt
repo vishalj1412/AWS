@@ -1,0 +1,62 @@
+Steps for deploy application through ansible=>
+1.create SSH key ansible.pem
+
+
+2.write inventory file=>
+⦁	       it is used for connect to hosts
+⦁	go to    sudo nano /etc/ansible/hosts
+⦁	write following code on hosts file in that write private ip of application server and web server also write user and SSH key path which you need to create
+--------------------------------------------------------------------------------------------------
+[webserver]
+10.0.0.94 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/ansible.pem ansible_connection=ssh
+[appserver]
+10.0.1.200 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/ansible.pem ansible_connection=ssh
+-----------------------------------------------------------------------------------
+⦁	check connection using following comand=> ansible 10.0.1.200 -m ping
+
+
+
+3.  create paybook for clone git repo which has your application
+⦁	using sudo nano clonegit.yaml
+⦁	write in that module for clone repo
+4.create playbook for appserver
+⦁	    craete playbook using sudo nano appserver.yaml
+⦁	write in that modules for appserver
+⦁	change change your database credintials in setting.py 
+⦁	     first crete gunicorn.service filr on ansible
+⦁	in that write demon file like following wirte here appserver port and private ip also write here path
+----------------------------------------------------------------------------------------
+ [Unit]
+Description=gunicorn daemon
+After=network.target
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/new/fundoo
+ExecStart=/home/ubuntu/new/venv/bin/gunicorn --workers 3 --bind 10.0.1.200:8000 fundoo.wsgi:application
+[Install]
+WantedBy=multi-user.target
+---------------------------------------------------------------------------------------------------------------
+⦁	check playbook is in runable condition or not uoing following command=>
+                           ansible-playbook appserver.yaml --check
+⦁	run playbook using=>  ansible-playbook appserver.yaml
+
+
+4. create chatapp file and write in that web server configuration using=>
+    sudo nano chatapp    in that write folowing script and ip of appsever
+----------------------------------------------------------------
+ server {
+ listen 80;
+ server_name _;
+ location = /favicon.ico { access_log off; log_not_found off; }
+ location / {
+     include proxy_params;
+     proxy_pass http://10.0.1.200:8000;
+ }
+}
+
+---------------------------------------------------------------
+
+
+5. write playbook for web server using =>
+sudo nano webserver.yaml and run it
