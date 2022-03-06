@@ -1,0 +1,39 @@
+version: "2.7"
+services:
+  mysql:
+     container_name: mysql
+     image: mysql
+     restart: always
+     environment:
+         MYSQL_USER: "chatapp"
+         MYSQL_DATABASE: chatapp
+         MYSQL_PASSWORD: chatapp123
+         MYSQL_ROOT_PASSWORD: "password"
+     ports:
+        - 0.0.0.0:3307:3306
+     expose:
+        - 3307
+
+     volumes:
+         - my-db: /var/lib/mysql
+     volumes:
+     - type: volume
+       source: my_db
+       target: /var/lib/mysql
+  chatapp:
+      container_name: mycontainer1
+      image: myimage
+      restart: always
+      environment:
+         DATABASE_TYPE: mysql
+         DATABASE_NAME: abcde
+         USER_NAME: abcde         
+         PASSWORD: abcde123
+         HOST_NAME: mysql
+         PORT: 3307
+      ports:
+       - "80:80"
+      depends_on:
+       - mysql
+volumes:
+     my_db:

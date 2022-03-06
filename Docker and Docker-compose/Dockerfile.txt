@@ -1,0 +1,27 @@
+FROM python:3.8
+MAINTAINER vishaljagtap753@gmail.com
+
+RUN apt-get upgrade -y
+
+RUN apt-get -y update
+RUN  apt-get install -y  python3-pip
+RUN  apt-get install -y default-libmysqlclient-dev
+RUN pip install --upgrade pip
+RUN pip3 install django
+RUN pip3 install virtualenv
+RUN pip3 install django-environ
+RUN  pip3 install mysqlclient
+COPY /new-chat-app /chatapp
+WORKDIR /chatapp
+RUN pip3 install -r requirements.txt
+ENV DATABASE_TYPE=mysql
+ENV DATABASE_NAME=abcde
+ENV USER_NAME=abcde
+ENV PASSWORD=abcde123
+ENV HOST_NAME=abcde.cuwfn3ym4kcl.us-east-2.rds.amazonaws.com
+ENV PORT=3306
+EXPOSE 8000
+WORKDIR /chatapp/fundoo/
+CMD python3 manage.py migrate
+CMD gunicorn --workers 3 --bind 0.0.0.0:8000 fundoo.wsgi:application
+
