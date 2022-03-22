@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app1
+  labels: 
+     app: app1
+spec:
+  replicas: 2
+  selector:
+     matchLabels:
+         app: app1
+  template:
+    metadata:
+      labels:
+         app: app1
+    spec:
+     containers:
+     - name: app1
+       image: akashdockerkhandare/chatapp:4.0
+       env:
+       - name: DATABASE_TYPE
+         valueFrom:
+            configMapKeyRef:
+              name: app-configmap
+              key: DATABASE_TYPE
+       - name: DATABASE_NAME
+         valueFrom:
+            configMapKeyRef:
+              name: app-configmap
+              key: DATABASE_NAME
+       - name: USER_NAME
+         valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: USER_NAME
+      
+       - name: PASSWORD
+         valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: PASSWORD
+       - name: HOST_NAME
+         valueFrom:
+            configMapKeyRef:
+              name: app-configmap
+              key: HOST_NAME
+       - name: PORT
+         valueFrom:
+            configMapKeyRef:
+              name: app-configmap
+              key: PORT
+       ports:
+       - containerPort: 8000
+
+         
+
+

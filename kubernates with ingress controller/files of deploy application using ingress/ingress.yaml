@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: "app-ingress"
+  namespace: "application"
+  labels: 
+    app: app-ingress
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernets.io/target-type: instance
+spec:
+  ingressClassName: alb
+  rules:
+    - host: vishalchatapp.ml
+      http:
+        paths:
+         - path: /
+           pathType: Prefix
+           backend:
+             service:
+               name: "backendapp"
+               port: 
+                 number: 8000
+
