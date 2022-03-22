@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: app-configmap
+   labels:
+    app: app1
+data:
+  DATABASE_TYPE: mysql
+  DATABASE_NAME: chatapp
+  HOST_NAME: db-service
+  PORT: '3306'

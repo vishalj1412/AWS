@@ -1,0 +1,26 @@
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfg
+metadata:
+  name: vam-cbos22
+  region: ap-southeast-1
+vpc:
+  id: "vpc-0039df8e2aeabe7c5"
+  subnets:
+    public:
+	  ap-southeast-1b:
+	    id: "subnet-088ab008b72993f10"
+	  ap-southeast-1c:
+		id: "subnet-0ca682bf6868866b5"
+		
+nodeGroups:
+  - name: vam-cbos22-ng-1
+    instanceType: t3.small
+	desiredCapacity: 2
+	volumeSize: 20
+	volumeType: gp2
+	labels:
+	  Project: test
+	  owner: 'devops.digital'
+	minSize: 2
+	maxSize: 2
