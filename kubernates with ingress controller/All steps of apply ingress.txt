@@ -24,8 +24,8 @@ client
 
 
 C:\Users\HP>aws configure
-AWS Access Key ID [None]: AKIAT2ALCEHMPZY2L25T
-AWS Secret Access Key [None]: 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
+AWS Access Key ID [None]: 
+AWS Secret Access Key [None]: 
 Default region name [us-east-2]:
 Default output format [yaml]:
 
