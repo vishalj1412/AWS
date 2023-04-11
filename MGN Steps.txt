@@ -1,0 +1,100 @@
+Fist Time setup:
+  Step 1 : creating the Replication Settings template.
+            - Go to MGN
+			- click on get Started. then yo will automaticaly goes in You will automatically be prompted to create the Replication Settings template 
+			   the first time you log into Application Migration Service.
+			-Configurable Replication Server settings include:
+                -The Subnet within which the Replication Server will be launched
+				-Replication Server instance type
+				-Amazon EBS volume types
+                -Amazon EBS encryption
+				-Security groups
+				-Configure Data routing and throttling
+			- then click on create template.
+			- you can edite it by clicking settings.
+			
+Step 2: Add Sourse server.
+        - add sourse server by installing replication agent.
+		- After adding sourse server it will go in following lifecycle steps:
+			Not ready - The server is undergoing the Initial Sync process and is not yet ready for testing. Data replication can only commence once all of the Initial Sync steps have been completed.
+			Ready for testing - The server has been successfully added to Application Migration Service and data replication has started. Test or Cutover instances can now be launched for this server.
+			Test in progress - A Test instance is currently being launched for this server.
+			Ready for cutover - This server has been tested and is now ready for a Cutover instance to be launched.
+			Cutover in progress - A Cutover instance is currently being launched for this server.
+			Cutover complete - This server has been cutover. All of the data on this server has been migrated to the AWS Cutover instance.
+			Disconnected - This server has been disconnected from Application Migration Service.
+			
+Steps 3 : Configuring launch settings :
+           - click on sourse server. 
+		   - under that click on lunch settings.
+		   - by clicking edit , edit genral lunch settings.
+		   - by clicking modify , you can modify EC2 lunch template.
+Launch settings are composed of the following:
+-Instance type right-sizing - The Instance type right-sizing feature allows Application Migration Service to launch a Test or Cutover instance type that best matches 
+      the hardware configuration of the source server. When enabled, this feature overrides the instance type selected in the EC2 Launch Template.
+-Start instance upon launch - Choose whether you want to start your test and cutover instances automatically upon launch or whether
+               you want to start them manually through the Amazon EC2 Console.
+-Copy private IP - Choose whether you want Application Migration Service to verify that the private IP used by the Test or Cutover instance matches the private IP used by the source server.
+-Transfer server tags - Choose whether you want Application Migration Service to transfer any user-configured custom tags from your source servers to your Test or Cutover instance.
+-OS Licensing - Choose whether you want to Bring Your Own Licenses (BYOL) from the source server to the Test or Cutover instance.
+		   
+Steps 4: Launching a Test instance :
+        - for lounch test server check following things :
+			-Under the Migration lifecycle column, the server should show Ready for testing
+			-Under the Data replication status column, the server should show the Healthy status.
+			-Under the Next step column, the server should show Launch test instance
+		
+		- then go to sourse server select checkbox of one or mltiple sourse sourse server.
+        - open Test and Cutover
+		-Under Testing, choose the Launch test instances option to launch a test instance for this server.
+        - then click on lounch.
+		-The Application Migration Service Console will indicate Launch job started when the test has started.
+		-Choose View job details on the dialog to view the specific Job for the test launch in the Launch History tab.
+        - check test instance lounche succefully by checking following things.
+		         -The Alerts column will show the Launched status, indicating that a Test instance has been launched for this server.
+                 -The Migration lifecycle column will show Test in progress.
+                 -The Next step column will show Complete testing and mark as 'Ready for cutover'.
+                 
+Marking as Ready for cutover:
+            -Check the box to the left of every source server that has a launched Test instance for which you want to finalize the test.
+			-Open the Test and Cutover menu.
+			-Under Testing, choose Mark as "Ready for cutover"
+			- select check box yes terminate the lunched instance.
+			- click on continue.
+			-go to that instance and terminate it.
+			
+			
+			
+			
+Step 5: Lounching Cutover instance :
+          - cutover by looking for the following indicators on the Source Servers page :
+		        -Under the Migration lifecycle column, the server should show Ready for cutover .
+				-Under the Data replication status column, the server should show the Healthy status.
+				-Under the Next step column, the server should show Terminate launched instance; Launch cutover instance if you have not terminated your latest launched Test instance.
+				-Alternatively, the Next step column will show Launch cutover instance if you have terminated your latest launched Test instance.
+		 -then go to the Source servers page and check the box to the left of each server you want to cutover.
+		 -Open the Test and Cutover menu.
+		 -Under Cutover, choose the Launch cutover instances option.
+		 -then click om Lunch.
+		 -On the Source Servers page, the Migration lifecycle column will show Cutover in progress and the Next step column will show Finalize cutover.
+		 -Successful cutover launch indicators: 
+				-The Alerts column will state Launched.
+				-The Migration lifecycle column will state Cutover in progress.
+				-The Data replication status will state Healthy.
+				-The Next step column will state Finalize cutover.
+
+
+Finalizing a cutover:
+
+              -Check the box to the left of every source server that has a launched Cutover instance you want to finalize.
+              -Open the Test and Cutover menu.
+			  -Under Cutover, choose Finalize cutover
+			  - then click on Finalize.
+			  
+To archive your cutover source servers:
+
+               -Check the box to the left of the of each source server for which the Migration lifecycle column states Cutover complete.
+			   -Open the Actions menu and choose Mark as archived.
+			   - click on Archive
+
+
