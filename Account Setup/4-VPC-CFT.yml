@@ -1,0 +1,294 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata:
+  License: Apache-2.0
+Description:  This template deploys a VPC, VPC flowlogs, two public and two private subnets spread
+  across two Availability Zones. It deploys an internet gateway, with a default
+  route on the public subnets. It deploys a NAT gateway, and default routes for them in the private subnets.
+Parameters:
+  VpcCIDR:
+    Description: Enter the IP range (CIDR notation) for this VPC
+    Type: String
+  PublicSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+  PublicSubnet2CIDR:
+    Description: Enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+  APPSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation) for the APP subnet in the first Availability Zone
+    Type: String
+  APPSubnet2CIDR:
+    Description: Enter the IP range (CIDR notation) for the APP subnet in the second Availability Zone
+    Type: String
+  DBSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation) for the DB subnet in the first Availability Zone
+    Type: String
+  DBSubnet2CIDR:
+    Description: Enter the IP range (CIDR notation) for the DB subnet in the second Availability Zone
+    Type: String
+  TAG:
+    Description: Enter the Name for the tags. Ex- XYZ-Prod
+    Type: String
+  Retention:
+    Description: Enter the retention days for logs
+    Type: Number
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Misc Parameters
+        Parameters:
+          - TAG
+          - Retention
+      - Label:
+          default: CIDRs
+        Parameters:
+          - VpcCIDR
+          - PublicSubnet1CIDR
+          - PublicSubnet2CIDR
+          - APPSubnet1CIDR
+          - APPSubnet2CIDR
+          - DBSubnet1CIDR
+          - DBSubnet2CIDR
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-VPC'
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-IGW'
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref VPC
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-Public-Subnet-1a'
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-Public-Subnet-1b'
+  APPSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref APPSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-APP-Subnet-1a'
+  APPSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref APPSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-APP-Subnet-1b'
+  DBSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref DBSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-DB-Subnet-1a'
+  DBSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref DBSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-DB-Subnet-1b'
+  EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-EIP-NAT'
+  NAT:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-NATGW'
+  PublicRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-Public-RT'
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+  PublicSubnet1RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRT
+      SubnetId: !Ref PublicSubnet1
+  PublicSubnet2RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRT
+      SubnetId: !Ref PublicSubnet2
+  PrivateRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-Private-RT'
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRT
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NAT
+  APPSubnet1RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRT
+      SubnetId: !Ref APPSubnet1
+  APPSubnet2RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRT
+      SubnetId: !Ref APPSubnet2
+  DBrivateSubnet1RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRT
+      SubnetId: !Ref DBSubnet1
+  DBSubnet2RTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRT
+      SubnetId: !Ref DBSubnet2
+  VPCFlowlogRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Description: !Join
+                    - ''
+                    - - !Ref TAG
+                      - '-VPC-Flowlog-Role'
+      RoleName: !Join
+                  - ''
+                  - - !Ref TAG
+                    - '-VPC-Flowlog-Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'vpc-flow-logs.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: !Join
+                  - ''
+                  - - !Ref TAG
+                    - '-VPC-Flowlog-Policy'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            - 'logs:DeleteLogGroup'
+            - 'logs:CreateLogGroup'
+            - 'logs:DescribeLogGroups'
+            - 'logs:DescribeLogStreams'
+            Resource: '*'
+  VPCFlowlogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Join
+                  - ''
+                  - - !Ref TAG
+                    - '-VPC-Flowlog'
+      RetentionInDays: !Ref Retention
+  FlowLog:
+    Type: 'AWS::EC2::FlowLog'
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt VPCFlowlogRole.Arn
+      LogGroupName: !Ref VPCFlowlogGroup
+      ResourceId: !GetAtt VPC.VpcId
+      ResourceType: 'VPC'
+      TrafficType: ALL
+

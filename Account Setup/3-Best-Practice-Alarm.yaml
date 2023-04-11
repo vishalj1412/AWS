@@ -1,0 +1,800 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS cloudwatch alarms and metrics template
+Parameters:
+  AllConfigurationEmail:
+    Type: 'String'
+    Description: Email for receiving all AWS configuration events
+  SubscribeToAllConfigurationTopic:
+    Type: String
+    Default: true
+    Description: Indicates whether AllConfigurationEmail will be subscribed to the AllConfigurationTopicName topic.
+    AllowedValues:
+      - true
+      - false
+  AllConfigurationDisplayName:
+    Type: 'String'
+    Description: SNS display name for all AWS configuration events
+  AllConfigurationTopicName:
+    Type: 'String'
+    Description: SNS display name for all AWS configuration events
+  EnableSecurityGroupChangeAlarm:
+    Type: String
+    Description: "Enable alarm for security group changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableNetworkAclChangeAlarm:
+    Type: String
+    Description: "Enable alarm for network ACL changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableGatewayChangeAlarm:
+    Type: String
+    Description: "Enable alarm for network gateway changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableVpcChangeAlarm:
+    Type: String
+    Description: "Enable alarm for VPC network changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableEc2InstanceChangeAlarm:
+    Type: String
+    Description: "Enable alarm for EC2 instance changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableEc2LargeInstanceChangeAlarm:
+    Type: String
+    Description: "Enable alarm for EC2 large instance changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableCloudTrailChangeAlarm:
+    Type: String
+    Description: "Enable alarm for CloudTrail changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableConsoleSignInFailureAlarm:
+    Type: String
+    Description: "Enable alarm for Console sign-in failures?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableAuthorizationFailureAlarm:
+    Type: String
+    Description: "Enable alarm for API authorization failures?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableIamPolicyChangesAlarm:
+    Type: String
+    Description: "Enable alarm for IAM policy changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableRootLoginAlarm:
+    Type: String
+    Description: "Enable alarm for root login?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableConsoleLoginWithoutMFAAlarm:
+    Type: String
+    Description: "Enable alarm for management console login without mfa?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableCMKDisableDeleteAlarm:
+    Type: String
+    Description: "Enable alarm for disabling or scheduled deletion of customer created CMKDisableDeletes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableBucketPolicyChangesAlarm:
+    Type: String
+    Description: "Enable alarm for S3 bucket policy changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableConfigConfigurationChangesAlarm:
+    Type: String
+    Description: "Enable alarm for AWS Config configuration changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  EnableRouteTableChangesAlarm:
+    Type: String
+    Description: "Enable alarm for route table changes?"
+    Default: true
+    AllowedValues:
+    - true
+    - false
+  LogGroupName:
+    Type: String
+    Description: Enter the CLoudwatch Log group name to be created. Ex- XYZ-Prod-Alarms-LogGroup
+  Retention:
+    Type: Number
+    Description: Enter the retention period for the config logs to be stored.
+  AlarmPrefix:
+    Type: String
+    Description: Enter the Prefix for the Alarm Names. Ex- XYZ-Prod
+Conditions:
+  EnableSecurityGroupChange: !Equals
+    - !Ref EnableSecurityGroupChangeAlarm
+    - 'true'
+  EnableNetworkAclChange: !Equals
+    - !Ref EnableNetworkAclChangeAlarm
+    - 'true'
+  EnableGatewayChange: !Equals
+    - !Ref EnableGatewayChangeAlarm
+    - 'true'
+  EnableVpcChange: !Equals
+    - !Ref EnableVpcChangeAlarm
+    - 'true'
+  EnableEc2InstanceChange: !Equals
+    - !Ref EnableEc2InstanceChangeAlarm
+    - 'true'
+  EnableEc2LargeInstanceChange: !Equals
+    - !Ref EnableEc2LargeInstanceChangeAlarm
+    - 'true'
+  EnableCloudTrailChange: !Equals
+    - !Ref EnableCloudTrailChangeAlarm
+    - 'true'
+  EnableConsoleSignInFailure: !Equals
+    - !Ref EnableConsoleSignInFailureAlarm
+    - 'true'
+  EnableAuthorizationFailure: !Equals
+    - !Ref EnableAuthorizationFailureAlarm
+    - 'true'
+  EnableIamPolicyChanges: !Equals
+    - !Ref EnableIamPolicyChangesAlarm
+    - 'true'
+  EnableRootLogin: !Equals
+    - !Ref EnableRootLoginAlarm
+    - 'true'
+  EnableConsoleLoginWithoutMFA: !Equals
+    - !Ref EnableConsoleLoginWithoutMFAAlarm
+    - 'true'
+  EnableCMKDisableDelete: !Equals
+    - !Ref EnableCMKDisableDeleteAlarm
+    - 'true'
+  EnableBucketPolicyChanges: !Equals
+    - !Ref EnableBucketPolicyChangesAlarm
+    - 'true'
+  EnableConfigConfigurationChanges: !Equals
+    - !Ref EnableConfigConfigurationChangesAlarm
+    - 'true'
+  EnableRouteTableChanges: !Equals
+    - !Ref EnableRouteTableChangesAlarm
+    - 'true'
+  Subscribe: !Equals
+    - !Ref SubscribeToAllConfigurationTopic
+    - 'true'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Misc Parameters
+        Parameters:
+          - LogGroupName
+          - Retention
+          - AlarmPrefix
+          - AllConfigurationEmail
+          - AllConfigurationDisplayName
+          - AllConfigurationTopicName
+      - Label:
+          default: Alarm Rules. DO Not Change
+        Parameters:
+          - SubscribeToAllConfigurationTopic
+          - EnableSecurityGroupChangeAlarm
+          - EnableNetworkAclChangeAlarm
+          - EnableGatewayChangeAlarm
+          - EnableVpcChangeAlarm
+          - EnableEc2InstanceChangeAlarm
+          - EnableEc2LargeInstanceChangeAlarm
+          - EnableCloudTrailChangeAlarm
+          - EnableConsoleSignInFailureAlarm
+          - EnableAuthorizationFailureAlarm
+          - EnableIamPolicyChangesAlarm
+          - EnableRootLoginAlarm
+          - EnableConsoleLoginWithoutMFAAlarm
+          - EnableCMKDisableDeleteAlarm
+          - EnableBucketPolicyChangesAlarm
+          - EnableConfigConfigurationChangesAlarm
+          - EnableRouteTableChangesAlarm
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      RetentionInDays: !Ref Retention
+  SNSAllConfigurationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Ref AllConfigurationDisplayName
+      TopicName: !Ref AllConfigurationTopicName
+  SNSAllConfigurationTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref SNSAllConfigurationTopic
+      PolicyDocument:
+        Statement:
+          - Sid: AWSSNSPolicy
+            Action:
+              - sns:Publish
+            Effect: Allow
+            Resource: !Ref SNSAllConfigurationTopic
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+                - config.amazonaws.com
+                - cloudwatch.amazonaws.com
+  SNSAllConfigurationEmailNotification:
+    Condition: Subscribe
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref AllConfigurationEmail
+      Protocol: email
+      TopicArn: !Ref SNSAllConfigurationTopic
+  SecurityGroupChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableSecurityGroupChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ ($.eventName = AuthorizeSecurityGroupIngress) || ($.eventName
+        = AuthorizeSecurityGroupEgress) || ($.eventName = RevokeSecurityGroupIngress)
+        || ($.eventName = RevokeSecurityGroupEgress) || ($.eventName = CreateSecurityGroup)
+        || ($.eventName = DeleteSecurityGroup) }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: SecurityGroupEventCount
+        MetricValue: '1'
+  SecurityGroupChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: SNSAllConfigurationTopic
+    Condition: EnableSecurityGroupChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailSecurityGroupChanges
+      AlarmDescription: Alarms when an API call is made to create, update or delete a Security Group.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: SecurityGroupEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  NetworkAclChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableNetworkAclChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ ($.eventName = CreateNetworkAcl) || ($.eventName = CreateNetworkAclEntry)
+        || ($.eventName = DeleteNetworkAcl) || ($.eventName = DeleteNetworkAclEntry)
+        || ($.eventName = ReplaceNetworkAclEntry) || ($.eventName = ReplaceNetworkAclAssociation)
+        }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: NetworkAclEventCount
+        MetricValue: '1'
+  NetworkAclChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - SecurityGroupChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableNetworkAclChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailNetworkAclChanges
+      AlarmDescription: Alarms when an API call is made to create, update or delete a Network ACL.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: NetworkAclEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  GatewayChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableGatewayChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ ($.eventName = CreateCustomerGateway) || ($.eventName = DeleteCustomerGateway)
+        || ($.eventName = AttachInternetGateway) || ($.eventName = CreateInternetGateway)
+        || ($.eventName = DeleteInternetGateway) || ($.eventName = DetachInternetGateway)
+        }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: GatewayEventCount
+        MetricValue: '1'
+  GatewayChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - NetworkAclChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableGatewayChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailGatewayChanges
+      AlarmDescription: Alarms when an API call is made to create, update or delete a Customer or Internet Gateway.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: GatewayEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  VpcChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableVpcChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ ($.eventName = CreateVpc) || ($.eventName = DeleteVpc) ||
+        ($.eventName = ModifyVpcAttribute) || ($.eventName = AcceptVpcPeeringConnection)
+        || ($.eventName = CreateVpcPeeringConnection) || ($.eventName = DeleteVpcPeeringConnection)
+        || ($.eventName = RejectVpcPeeringConnection) || ($.eventName = AttachClassicLinkVpc)
+        || ($.eventName = DetachClassicLinkVpc) || ($.eventName = DisableVpcClassicLink)
+        || ($.eventName = EnableVpcClassicLink) }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: VpcEventCount
+        MetricValue: '1'
+  VpcChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - GatewayChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableVpcChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailVpcChanges
+      AlarmDescription: Alarms when an API call is made to create, update or delete a VPC, VPC peering connection or VPC connection to classic.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: VpcEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  EC2InstanceChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableEc2InstanceChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ ($.eventName = RunInstances) || ($.eventName = RebootInstances)
+        || ($.eventName = StartInstances) || ($.eventName = StopInstances) || ($.eventName
+        = TerminateInstances) }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: EC2InstanceEventCount
+        MetricValue: '1'
+  EC2InstanceChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - VpcChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableEc2InstanceChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailEC2InstanceChanges
+      AlarmDescription: Alarms when an API call is made to create, terminate, start, stop or reboot an EC2 instance.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: EC2InstanceEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  EC2LargeInstanceChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableEc2LargeInstanceChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ (($.eventName = RunInstances) || ($.eventName = RebootInstances)
+        || ($.eventName = StartInstances) || ($.eventName = StopInstances) || ($.eventName
+        = TerminateInstances)) && (($.requestParameters.instanceType
+        = *.32xlarge) || ($.requestParameters.instanceType
+        = *.24xlarge) || ($.requestParameters.instanceType
+        = *.18xlarge) || ($.requestParameters.instanceType
+        = *.16xlarge) || ($.requestParameters.instanceType
+        = *.12xlarge) || ($.requestParameters.instanceType
+        = *.10xlarge) || ($.requestParameters.instanceType
+        = *.9xlarge) || ($.requestParameters.instanceType
+        = *.8xlarge) || ($.requestParameters.instanceType = *.4xlarge)) }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: EC2LargeInstanceEventCount
+        MetricValue: '1'
+  EC2LargeInstanceChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - EC2InstanceChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableEc2LargeInstanceChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailEC2LargeInstanceChanges
+      AlarmDescription: Alarms when an API call is made to create, terminate, start, stop or reboot a 4x, 8x, 9x, 10x, 12x, 16x, 18x, 24x, 32x-large EC2 instance.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: EC2LargeInstanceEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  CloudTrailChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableCloudTrailChange
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{ ($.eventName = CreateTrail) || ($.eventName = UpdateTrail)
+        || ($.eventName = DeleteTrail) || ($.eventName = StartLogging) || ($.eventName
+        = StopLogging) }"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: CloudTrailEventCount
+        MetricValue: '1'
+  CloudTrailChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - EC2LargeInstanceChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableCloudTrailChange
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailChanges
+      AlarmDescription: Alarms when an API call is made to create, update or delete a CloudTrail trail, or to start or stop logging to a trail.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: CloudTrailEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  ConsoleSignInFailuresMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableConsoleSignInFailure
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{ ($.eventName = ConsoleLogin) && ($.errorMessage = "Failed
+        authentication") }'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: ConsoleSignInFailureCount
+        MetricValue: '1'
+  ConsoleSignInFailuresAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - CloudTrailChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableConsoleSignInFailure
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailConsoleSignInFailures
+      AlarmDescription: Alarms when an unauthenticated API call is made to sign into the console.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: ConsoleSignInFailureCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '3'
+      TreatMissingData: notBreaching
+  AuthorizationFailuresMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableAuthorizationFailure
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{ ($.errorCode = "*UnauthorizedOperation") || ($.errorCode =
+        "AccessDenied*") }'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: AuthorizationFailureCount
+        MetricValue: '1'
+  AuthorizationFailuresAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - ConsoleSignInFailuresAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableAuthorizationFailure
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CloudTrailAuthorizationFailures
+      AlarmDescription: Alarms when an unauthorized API call is made.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: AuthorizationFailureCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  IAMPolicyChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableIamPolicyChanges
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "{($.eventName=DeleteGroupPolicy)||($.eventName=DeleteRolePolicy)||($.eventName=DeleteUserPolicy)||($.eventName=PutGroupPolicy)||($.eventName=PutRolePolicy)||($.eventName=PutUserPolicy)||($.eventName=CreatePolicy)||($.eventName=DeletePolicy)||($.eventName=CreatePolicyVersion)||($.eventName=DeletePolicyVersion)||($.eventName=AttachRolePolicy)||($.eventName=DetachRolePolicy)||($.eventName=AttachUserPolicy)||($.eventName=DetachUserPolicy)||($.eventName=AttachGroupPolicy)||($.eventName=DetachGroupPolicy)}"
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: IAMPolicyEventCount
+        MetricValue: '1'
+  IAMPolicyChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - AuthorizationFailuresAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableIamPolicyChanges
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - IAMPolicyChanges
+      AlarmDescription: Alarms when IAM policy changs are made.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: IAMPolicyEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  RootLoginMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableRootLogin
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{ $.userIdentity.type = "Root" && $.userIdentity.invokedBy NOT EXISTS && $.eventType != "AwsServiceEvent" }'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: RootLoginEventCount
+        MetricValue: '1'
+  RootLoginAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - IAMPolicyChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableRootLogin
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - RootLogin
+      AlarmDescription: Alarms when the root user logs in.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: RootLoginEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  ConsoleLoginWithoutMFAMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableConsoleLoginWithoutMFA
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{ $.eventName="ConsoleLogin" && $.additionalEventData.MFAUsed !="Yes" }'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: ConsoleLoginWithoutMFAEventCount
+        MetricValue: '1'
+  ConsoleLoginWithoutMFAAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - RootLoginAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableConsoleLoginWithoutMFA
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - ConsoleLoginWithoutMFA
+      AlarmDescription: Alarms when the user logs in without mfa.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: ConsoleLoginWithoutMFAEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  CMKDisableDeleteMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableCMKDisableDelete
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{($.eventSource=kms.amazonaws.com) && (($.eventName=DisableKey) || ($.eventName=ScheduleKeyDeletion))}'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: CMKDisableDeleteEventCount
+        MetricValue: '1'
+  CMKDisableDeleteAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - ConsoleLoginWithoutMFAAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableCMKDisableDelete
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - CMKDisableDelete
+      AlarmDescription: Alarms when the CMKDisableDelete is disabled or scheduled for deletion.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: CMKDisableDeleteEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  BucketPolicyChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableBucketPolicyChanges
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{($.eventSource=s3.amazonaws.com) && (($.eventName=PutBucketAcl) || ($.eventName=PutBucketPolicy) || ($.eventName=PutBucketCors) || ($.eventName=PutBucketLifecycle) || ($.eventName=PutBucketReplication) || ($.eventName=DeleteBucketPolicy) || ($.eventName=DeleteBucketCors) || ($.eventName=DeleteBucketLifecycle) || ($.eventName=DeleteBucketReplication))}'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: BucketPolicyChangesEventCount
+        MetricValue: '1'
+  BucketPolicyChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - CMKDisableDeleteAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableBucketPolicyChanges
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - BucketPolicyChanges
+      AlarmDescription: Alarms when S3 bucket policy is changed.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: BucketPolicyChangesEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  ConfigConfigurationChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableConfigConfigurationChanges
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{($.eventSource=config.amazonaws.com) && (($.eventName=StopConfigurationRecorder) || ($.eventName=DeleteDeliveryChannel) || ($.eventName=PutDeliveryChannel) || ($.eventName=PutConfigurationRecorder))}'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: ConfigConfigurationChangesEventCount
+        MetricValue: '1'
+  ConfigConfigurationChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - BucketPolicyChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableConfigConfigurationChanges
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - ConfigConfigurationChanges
+      AlarmDescription: Alarms when AWS Config Configuration is changed.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: ConfigConfigurationChangesEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching
+  RouteTableChangesMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: EnableRouteTableChanges
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: '{($.eventName=CreateRoute) || ($.eventName=CreateRouteTable) || ($.eventName=ReplaceRoute) || ($.eventName=ReplaceRouteTableAssociation) || ($.eventName=DeleteRouteTable) || ($.eventName=DeleteRoute) || ($.eventName=DisassociateRouteTable)}'
+      MetricTransformations:
+      - MetricNamespace: LogMetrics
+        MetricName: RouteTableChangesEventCount
+        MetricValue: '1'
+  RouteTableChangesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn:
+    - ConfigConfigurationChangesAlarm
+    - SNSAllConfigurationTopic
+    Condition: EnableRouteTableChanges
+    Properties:
+      AlarmName: !Join
+                    - ''
+                    - - !Ref AlarmPrefix
+                      - '-'
+                      - RouteTableChanges
+      AlarmDescription: Alarms when route table configuration is changed.
+      AlarmActions: [!Ref SNSAllConfigurationTopic]
+      MetricName: RouteTableChangesEventCount
+      Namespace: LogMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: '1'
+      Period: '300'
+      Statistic: Sum
+      Threshold: '1'
+      TreatMissingData: notBreaching

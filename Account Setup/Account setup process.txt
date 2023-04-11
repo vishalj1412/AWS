@@ -1,0 +1,15 @@
+config :
+- enter config bucket name.
+- retention period mostaly 90 days
+- run CFT
+cloudtrail:
+- in CFT choose file
+- enter Cloudtrail bucket name
+- enter retention period.
+- enter trailName and run CFT 
+
+GuardDuty:
+- create s3 bucket 
+- upload 7 files which inside of guardDuty folder on s3
+-run 5-Guard-Duty yaml file in CFT.
+- enter s3 bucket name , when runing CFT and enter emailId and sns name CFT will create SNS topic with this emailId.

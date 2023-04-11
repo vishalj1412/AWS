@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Configures Cloudtrail in the AWS account.
+Parameters:
+  CloudtrailBucketName:
+    Type: String
+    Description: Enter the config bucket name. Use only lowercase letters
+  Retention:
+    Type: Number
+    Description: Enter the retention period for the cloudtrail logs to be stored.
+  TrailName:
+    Description: Please enter the Name for the cloudtrail
+    Type: String
+Resources:
+  CloudtrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref CloudtrailBucketName
+      LifecycleConfiguration:
+        Rules:
+          - Id: !Join
+                    - ''
+                    - - 'Delete-After-'
+                      - !Ref Retention
+                      - '-Days'
+            Status: Enabled
+            ExpirationInDays: !Ref Retention
+  CloudtrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudtrailBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: 's3:GetBucketAcl'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref CloudtrailBucket
+            Principal: 
+              Service: cloudtrail.amazonaws.com
+          - Action: 's3:PutObject'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref CloudtrailBucket
+                - '/*'
+            Principal: 
+              Service: cloudtrail.amazonaws.com
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: 
+      - CloudtrailBucket
+      - CloudtrailBucketPolicy
+    Properties: 
+      S3BucketName: !Ref CloudtrailBucket
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: true
+      TrailName: !Ref TrailName
+      Tags:
+        - Key: Name
+          Value: !Ref TrailName

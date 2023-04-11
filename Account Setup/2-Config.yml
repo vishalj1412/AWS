@@ -1,0 +1,370 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Enables an AWS account baseline AWS Config rules.
+Parameters:
+  EnableEncryptedVolumesRule:
+    Type: String
+    Description: Enables the AWS managed encrypted-volumes config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnableRdsEncryptionRule:
+    Type: String
+    Description: Enables the AWS managed rds-storage-encrypted config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnableS3PublicReadRule:
+    Type: String
+    Description: Enables the AWS managed s3-bucket-public-read-prohibited config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnableS3PublicWriteRule:
+    Type: String
+    Description: Enables the AWS managed s3-bucket-public-write-prohibited config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnableS3ServerSideEncryptionRule:
+    Type: String
+    Description: Enables the AWS managed s3-bucket-server-side-encryption-enabled config rule. To enable, change the parameter value to true.
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  EnableRestrictedCommonPortsRule:
+    Type: String
+    Description: Enables the AWS managed restricted-common-ports config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnableRestrictedSshRule:
+    Type: String
+    Description: Enables the AWS managed restricted-ssh config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  MaximumExecutionFrequency:
+    Type: String
+    Default: TwentyFour_Hours
+    Description: The frequency that you want AWS Config to run evaluations for the rule.
+    MinLength: '1'
+    ConstraintDescription: This parameter is required.
+    AllowedValues:
+      - One_Hour
+      - Three_Hours
+      - Six_Hours
+      - Twelve_Hours
+      - TwentyFour_Hours
+  blockedPort1:
+    Type: String
+    Default: '20'
+    Description: Blocked TCP port number.
+  blockedPort2:
+    Type: String
+    Default: '21'
+    Description: Blocked TCP port number.
+  blockedPort3:
+    Type: String
+    Default: '3389'
+    Description: Blocked TCP port number.
+  blockedPort4:
+    Type: String
+    Default: '3306'
+    Description: Blocked TCP port number.
+  blockedPort5:
+    Type: String
+    Default: '4333'
+    Description: Blocked TCP port number.
+  EnableRootMfaRule:
+    Type: String
+    Description: Enables the AWS managed root-account-mfa-enabled config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EnableIamPasswordPolicyRule:
+    Type: String
+    Description: Enables the AWS managed iam-password-policy config rule. To disable, change the parameter value to false.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  RequireUppercaseCharacters:
+    Type: String
+    Default: 'true'
+    Description: Require at least one uppercase character in password.
+    AllowedValues:
+      - true
+      - false
+  RequireLowercaseCharacters:
+    Type: String
+    Default: 'true'
+    Description: Require at least one lowercase character in password.
+    AllowedValues:
+      - true
+      - false
+  RequireSymbols:
+    Type: String
+    Default: 'true'
+    Description: Require at least one symbol in password.
+    AllowedValues:
+      - true
+      - false
+  RequireNumbers:
+    Type: String
+    Default: 'true'
+    Description: Require at least one number in password.
+    AllowedValues:
+      - true
+      - false
+  MinimumPasswordLength:
+    Type: String
+    Default: '12'
+    Description: Password minimum length.
+  PasswordReusePrevention:
+    Type: String
+    Default: '6'
+    Description: Number of passwords before allowing reuse.
+  MaxPasswordAge:
+    Type: String
+    Default: '90'
+    Description: Number of days before password expiration.
+  ConfigBucketName:
+    Type: String
+    Description: Enter the config bucket name. Use only lowercase letters
+  Retention:
+    Type: Number
+    Description: Enter the retention period for the config logs to be stored.
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Misc Parameters
+        Parameters:
+          - ConfigBucketName
+          - Retention
+          - MaximumExecutionFrequency
+      - Label:
+          default: Config Rules. Do Not Change
+        Parameters:
+          - EnableEncryptedVolumesRule
+          - EnableRdsEncryptionRule
+          - EnableS3PublicReadRule
+          - EnableS3PublicWriteRule
+          - EnableS3ServerSideEncryptionRule
+          - EnableRestrictedCommonPortsRule
+          - EnableRestrictedSshRule
+          - EnableRootMfaRule
+          - EnableIamPasswordPolicyRule
+      - Label:
+          default: Restricted Common Ports. Do Not Change
+        Parameters:
+          - blockedPort1
+          - blockedPort2
+          - blockedPort3
+          - blockedPort4
+          - blockedPort5
+      - Label:
+          default: IAM Password Policy
+        Parameters:
+          - RequireUppercaseCharacters
+          - RequireLowercaseCharacters
+          - RequireSymbols
+          - RequireNumbers
+          - MinimumPasswordLength
+          - PasswordReusePrevention
+          - MaxPasswordAge
+Resources:
+  ConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ConfigBucketName
+      LifecycleConfiguration:
+        Rules:
+          - Id: !Join
+                    - ''
+                    - - 'Delete-After-'
+                      - !Ref Retention
+                      - '-Days'
+            Status: Enabled
+            ExpirationInDays: !Ref Retention
+  ConfigBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ConfigBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: 's3:GetBucketAcl'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref ConfigBucket
+            Principal: 
+              Service: config.amazonaws.com
+          - Action: 's3:ListBucket'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref ConfigBucket
+            Principal: 
+              Service: config.amazonaws.com
+          - Action: 's3:PutObject'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref ConfigBucket
+                - '/*'
+            Principal: 
+              Service: config.amazonaws.com
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Properties:
+      Name: default
+      RecordingGroup:
+        AllSupported: true
+        IncludeGlobalResourceTypes: true
+      RoleARN: !Join
+                    - ''
+                    - - 'arn:aws:iam::'
+                      - !Ref 'AWS::AccountId'
+                      - ':role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig'
+    DependsOn: 
+      - ConfigBucket
+      - ConfigBucketPolicy
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    Properties:
+      Name: default
+      S3BucketName: !Ref ConfigBucket
+    DependsOn: 
+      - ConfigBucket
+      - ConfigBucketPolicy
+  CheckForEncryptedVolumes:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-Encrypted-Volumes
+      Description: Checks whether EBS volumes that are in an attached state are encrypted.
+      Source:
+        Owner: AWS
+        SourceIdentifier: ENCRYPTED_VOLUMES
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::EC2::Volume'
+    DependsOn: ConfigRecorder
+  CheckForRdsEncryption:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-RDS-Encryption
+      Description: Checks whether storage encryption is enabled for your RDS DB instances.
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_STORAGE_ENCRYPTED
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::RDS::DBInstance'
+    DependsOn: ConfigRecorder
+  CheckForS3PublicRead:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-S3-Public-Read
+      Description: Checks that your S3 buckets do not allow public read access. If an S3 bucket policy or bucket ACL allows public read access, the bucket is noncompliant.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::S3::Bucket'
+    DependsOn: ConfigRecorder
+  CheckForS3PublicWrite:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-S3-Public-Write
+      Description: Checks that your S3 buckets do not allow public write access. If an S3 bucket policy or bucket ACL allows public write access, the bucket is noncompliant.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::S3::Bucket'
+    DependsOn: ConfigRecorder
+  CheckForS3ServerSideEncryption:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-S3-Server-Side-Encryption
+      Description: Checks for explicit denies on put-object requests without server side encryption.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::S3::Bucket'
+    DependsOn: ConfigRecorder
+  CheckForRestrictedCommonPortsPolicy:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-Restricted-Common-Ports-Policy
+      Description: Checks whether security groups that are in use disallow unrestricted incoming TCP traffic to the specified ports.
+      InputParameters:
+        blockedPort1: !Ref blockedPort1
+        blockedPort2: !Ref blockedPort2
+        blockedPort3: !Ref blockedPort3
+        blockedPort4: !Ref blockedPort4
+        blockedPort5: !Ref blockedPort5
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::EC2::SecurityGroup'
+      Source:
+        Owner: AWS
+        SourceIdentifier: RESTRICTED_INCOMING_TRAFFIC
+    DependsOn: ConfigRecorder
+  CheckForRestrictedSshPolicy:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-Restricted-SSH-Policy
+      Description: Checks whether security groups that are in use disallow unrestricted incoming SSH traffic.
+      Scope:
+        ComplianceResourceTypes:
+          - 'AWS::EC2::SecurityGroup'
+      Source:
+        Owner: AWS
+        SourceIdentifier: INCOMING_SSH_DISABLED
+    DependsOn: ConfigRecorder
+  CheckForRootMfa:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-Root-MFA
+      Description: Checks whether the root user of your AWS account requires multi-factor authentication for console sign-in.
+      Source:
+        Owner: AWS
+        SourceIdentifier: ROOT_ACCOUNT_MFA_ENABLED
+      MaximumExecutionFrequency: !Ref MaximumExecutionFrequency
+    DependsOn: ConfigRecorder
+  CheckForIamPasswordPolicy:
+    Type: 'AWS::Config::ConfigRule'
+    Properties:
+      ConfigRuleName: Check-For-IAM-Password-Policy
+      Description: Checks whether the account password policy for IAM users meets the specified requirements.
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_PASSWORD_POLICY
+      InputParameters:
+        RequireUppercaseCharacters: !Ref RequireUppercaseCharacters
+        RequireLowercaseCharacters: !Ref RequireLowercaseCharacters
+        RequireSymbols: !Ref RequireSymbols
+        RequireNumbers: !Ref RequireNumbers
+        MinimumPasswordLength: !Ref MinimumPasswordLength
+        PasswordReusePrevention: !Ref PasswordReusePrevention
+        MaxPasswordAge: !Ref MaxPasswordAge
+      MaximumExecutionFrequency: !Ref MaximumExecutionFrequency
+    DependsOn: ConfigRecorder

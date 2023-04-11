@@ -1,0 +1,299 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Demonstrates how to use GuardDuty Findings to automate WAF ACL and VPC NACL entries.
+  The template installs a Lambda function that updates an AWS WAF IP Set and VPC NACL.
+
+Parameters:
+  Retention:
+    Description: How long to retain IP addresses in the blacklist (in minutes). Default is 12 hours, minimum is 5 minutes and maximum one week (10080 minutes)
+    Type: Number
+    Default: 720
+    MinValue: 5
+    MaxValue: 10080
+    ConstraintDescription: Minimum of 5 minutes and maximum of 10080 (one week).
+  AdminEmail:
+    Description: Email address to receive notifications. Must be a valid email address.
+    Type: String
+    AllowedPattern: ^(?:[a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$
+  ArtifactsBucket:
+    Description: S3 bucket with lambda files (Lambda functions).
+    Type: String
+    Default: awsiammedia
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: ArtifactsBucket S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-).
+      It cannot start or end with a hyphen (-).
+  ArtifactsPrefix:
+    Description: Path in the S3 bucket containing lambda files.
+    Type: String
+    Default: public/sample/
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: ArtifactsPrefix key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-),
+      and forward slash (/).
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: GD2ACL Configuration
+      Parameters:
+      - AdminEmail
+      - Retention
+    - Label:
+        default: Artifact Configuration
+      Parameters:
+      - ArtifactsBucket
+      - ArtifactsPrefix
+
+    ParameterLabels:
+      AdminEmail:
+        default: Notification email (REQUIRED)
+      Retention:
+        default: Retention time in minutes
+      ArtifactsBucket:
+        default: S3 bucket for artifacts
+      ArtifactsPrefix:
+        default: S3 path to artifacts
+
+
+Resources:
+
+  GuardDutytoACLLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "GuardDuty to ACL Function"
+      Handler : "guardduty_to_acl_lambda.lambda_handler"
+      MemorySize: 1024
+      Timeout: 300
+      ReservedConcurrentExecutions: 1
+      Role: !GetAtt GuardDutytoACLRole.Arn
+      Runtime : "python3.9"
+      Environment:
+        Variables:
+          ACLMETATABLE: !Ref GuardDutytoACLDDBTable
+          SNSTOPIC: !Ref GuardDutytoACLSNSTopic
+      Code:
+        S3Bucket: !Sub ${ArtifactsBucket}
+        S3Key: !Sub ${ArtifactsPrefix}guardduty_to_acl_lambda.zip
+
+  GuardDutytoACLRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              "sts:AssumeRole"
+      Path: "/"
+
+  GuardDutytoACLPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName:
+        Fn::Join:
+          - '-'
+          - [ !Ref "AWS::Region", 'guardduty-to-nacl-wafipset' ]
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: "Allow"
+            Action:
+              - "ec2:Describe*"
+              - "ec2:*NetworkAcl*"
+            Resource: "*"
+          -
+            Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: "arn:aws:logs:*:*:*"
+          -
+            Effect: Allow
+            Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:DeleteItem
+            Resource: !GetAtt GuardDutytoACLDDBTable.Arn
+          -
+            Effect: Allow
+            Action:
+            - sns:Publish
+            Resource: !Ref GuardDutytoACLSNSTopic
+      Roles:
+        -
+          Ref: "GuardDutytoACLRole"
+
+  # GuardDuty CloudWatch Event - For GuardDuty Finding:
+  GuardDutytoACLEvent:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Description: "GuardDuty Malicious Host Events"
+      EventPattern:
+        source:
+        - aws.guardduty
+        detail:
+          type:
+          - "UnauthorizedAccess:EC2/SSHBruteForce"
+          - "UnauthorizedAccess:EC2/RDPBruteForce"
+          - "Recon:EC2/PortProbeUnprotectedPort"
+          - "Trojan:EC2/BlackholeTraffic"
+          - "Backdoor:EC2/XORDDOS"
+          - "UnauthorizedAccess:EC2/TorIPCaller"
+          - "Trojan:EC2/DropPoint"
+		  - "Policy:IAMUser/RootCredentialUsage"
+      State: "ENABLED"
+      Targets:
+        -
+          Arn: !GetAtt GuardDutytoACLLambda.Arn
+          Id: "GuardDutyEvent-Lambda-Trigger"
+
+  GuardDutytoACLInvokePermissions:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      FunctionName: !Ref "GuardDutytoACLLambda"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+
+  GuardDutytoACLDDBTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "NetACLId"
+          AttributeType: "S"
+        -
+          AttributeName: "CreatedAt"
+          AttributeType: "N"
+      KeySchema:
+        -
+          AttributeName: "NetACLId"
+          KeyType: "HASH"
+        -
+          AttributeName: "CreatedAt"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+  PruneOldEntriesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Prune old entries in NACLs"
+      Handler : "prune_old_entries.lambda_handler"
+      MemorySize: 1024
+      Timeout: 300
+      Role: !GetAtt PruneOldEntriesRole.Arn
+      Runtime : "python3.9"
+      Environment:
+        Variables:
+          ACLMETATABLE: !Ref GuardDutytoACLDDBTable
+          RETENTION: !Ref Retention
+      Code:
+        S3Bucket: !Sub ${ArtifactsBucket}
+        S3Key: !Sub ${ArtifactsPrefix}prune_old_entries.zip
+
+  PruneOldEntriesRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              "sts:AssumeRole"
+      Path: "/"
+
+  PruneOldEntriesPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName:
+        Fn::Join:
+          - '-'
+          - [ !Ref "AWS::Region", 'prune-old-entries' ]
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: "Allow"
+            Action:
+              - "ec2:Describe*"
+              - "ec2:*NetworkAcl*"
+            Resource: "*"
+          -
+            Effect: "Allow"
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: "arn:aws:logs:*:*:*"
+          -
+            Effect: Allow
+            Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:DeleteItem
+            Resource: !GetAtt GuardDutytoACLDDBTable.Arn
+      Roles:
+        -
+          Ref: "PruneOldEntriesRole"
+
+  PruneOldEntriesSchedule:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Description: "ScheduledPruningRule"
+      ScheduleExpression: "rate(5 minutes)"
+      State: "ENABLED"
+      Targets:
+        -
+          Arn: !GetAtt PruneOldEntriesLambda.Arn
+          Id: "TargetFunctionV1"
+
+  PruneOldEntriesPermissionToInvoke:
+    DependsOn:
+      - GuardDutytoACLLambda
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      FunctionName: !Ref PruneOldEntriesLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt PruneOldEntriesSchedule.Arn
+
+  GuardDutytoACLSNSTopic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      Subscription:
+        -
+          Endpoint: !Ref AdminEmail
+          Protocol: "email"
+
+Outputs:
+  GuardDutytoACLLambda:
+    Description: GD2ACL Primary Lambda Function.
+    Value: !Sub https://console.aws.amazon.com/lambda/home?region=${AWS::Region}#/functions/${GuardDutytoACLLambda}
+  PruneOldEntriesLambda:
+    Description: GD2ACL Entry Pruning Lambda Function.
+    Value: !Sub https://console.aws.amazon.com/lambda/home?region=${AWS::Region}#/functions/${PruneOldEntriesLambda}
+  ACLMetaTable:
+    Description: GD2ACL DynamoDB State Table
+    Value: !Ref GuardDutytoACLDDBTable
+  Retention:
+    Description: ACL Entry Time to Live in Minutes
+    Value: !Ref Retention
+  Region:
+    Description: Region of the stack.
+    Value:
+      Ref: AWS::Region
