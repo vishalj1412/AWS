@@ -1,0 +1,218 @@
+POC- CloudwatchAgent
+https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/install-CloudWatch-Agent-on-first-instance.html
+
+Create An IAM ROLE:
+Policies: CloudWatchAgentServerPolicy,AmazonEC2RoleforSSM, CloudWatchAgentAdminPolicy.
+link to read more:https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/create-iam-roles-for-cloudwatch-agent.html
+
+AmazonSSMFullAccess
+AmazonEC2RoleforSSM
+
+AmazonEC2FullAccess
+
+CloudWatchAgentAdminPolicy
+AmazonS3FullAccess
+CloudWatchAgentServerPolicy
+CloudWatchFullAccess
+
+
+
+------------------------------------------------
+link to read more:https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
+https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/create-cloudwatch-agent-configuration-file-wizard.html
+	
+Now upload the CloudWatchAgent configuration file to system manager parameter store:
+
+
+Open aws System Manager console- go to parameter store:
+choose Create Parameter
+Name must be AmazonCloudWatch-Linux (due to IAM Role:"Resource": "arn:aws:ssm:*:*:parameter/AmazonCloudWatch-*")
+Type: String
+value: 
+	{
+      "agent": {
+        "metrics_collection_interval": 300,
+        "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+      },
+      "metrics": {
+        "metrics_collected": {
+          "disk": {
+            "resources": [
+              "*"
+            ],
+            "measurement": [
+              "disk_used_percent"
+            ],
+             "ignore_file_system_types": [
+              "sysfs", "devtmpfs","tmpfs"
+            ],
+            "metrics_collection_interval": 300
+          },
+          "mem": {
+            "measurement": [
+              "mem_used_percent"
+            ],
+            "metrics_collection_interval": 300
+          }
+        },
+        "append_dimensions": {
+          "ImageId": "${aws:ImageId}",
+          "InstanceId": "${aws:InstanceId}",
+          "InstanceType": "${aws:InstanceType}",
+          "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+        },
+        "aggregation_dimensions" : [["ImageId"], ["InstanceId", "InstanceType"], ["d1"],[]]
+      }
+	}
+	
+Choose create parameter.
+
+
+For Windows:
+{
+	"metrics": {
+		"append_dimensions": {
+			"AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+			"ImageId": "${aws:ImageId}",
+			"InstanceId": "${aws:InstanceId}"
+		},
+		"metrics_collected": {
+			"LogicalDisk": {
+				"measurement": [
+					"% Free Space"
+				],
+				"metrics_collection_interval": 300,
+				"resources": [
+					"*"
+				]
+			},
+			"Memory": {
+				"measurement": [
+					"% Committed Bytes In Use"
+				],
+				"metrics_collection_interval": 300
+			},
+			"statsd": {
+				"metrics_aggregation_interval": 300,
+				"metrics_collection_interval": 300,
+				"service_address": ":8125"
+			}
+		}
+	}
+}
+
+-------------------------------------------------------
+
+
+
+Now update the OS(either manually or by system manager)
+---------------------------
+
+Update SSM agent on instance.
+
+System Manager:
+Run Command: AWS-UpdateSSMAgent
+Targets: instance
+check platform within  AWS Command Line Interface command tab and run at last.
+----------------------------
+
+Install Cloudwatch agent on instance.
+
+Run Command: 
+
+In the Command document list, choose AWS-ConfigureAWSPackage
+
+In the Targets area, choose the instance on which to install the CloudWatch agent.
+
+In the Action list, choose Install.
+
+In the Name field, type AmazonCloudWatchAgent
+
+Leave Version set to latest to install the latest version of the agent.
+
+check platform within  AWS Command Line Interface command tab and Choose Run at last.
+
+-----------------------------
+	
+Again go to system manager:	
+Run Command: 
+
+Choose Run command.
+
+In the Command document list, choose AmazonCloudWatch-ManageAgent
+
+In the Targets area, choose the instance where you installed the CloudWatch agent
+
+In the Action list, choose configure.
+
+In the Optional Configuration Source list, choose ssm.
+
+In the Optional Configuration Location box, type the name of the agent configuration file that you created and saved to Systems Manager Parameter Store, example- Optional Configuration Location: AmazonCloudWatch-Linux.
+
+In the Optional Restart list, choose yes to start the agent.
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------
+https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf
+
+ipconfig
+route print
+
+route delete 169.254.169.250
+route delete 169.254.169.251
+route delete 169.254.169.254
+route delete 169.254.169.249
+route delete 169.254.169.123
+route delete 169.254.169.253
+
+route -p ADD 169.254.169.251 MASK 255.255.255.128 10.16.140.1
+route -p ADD 169.254.169.250 MASK 255.255.255.128 10.16.140.1
+route -p ADD 169.254.169.254 MASK 255.255.255.128 10.16.140.1
+route -p ADD 169.254.169.249 MASK 255.255.255.128 10.16.140.1
+route -p ADD 169.254.169.123 MASK 255.255.255.128 10.16.140.1
+route -p ADD 169.254.169.253 MASK 255.255.255.128 10.16.140.1
+
+route -p ADD 169.254.169.251 MASK 255.255.255.128 10.12.30.1
+route -p ADD 169.254.169.250 MASK 255.255.255.128 10.12.30.1
+route -p ADD 169.254.169.254 MASK 255.255.255.128 10.12.30.1
+route -p ADD 169.254.169.249 MASK 255.255.255.128 10.12.30.1
+route -p ADD 169.254.169.123 MASK 255.255.255.128 10.12.30.1
+route -p ADD 169.254.169.253 MASK 255.255.255.128 10.12.30.1
+
+aws ssm send-command --document-name "AmazonCloudWatch-ManageAgent" --document-version "\$LATEST" --targets '[{"Key":"InstanceIds","Values":["i-09d5d33ec64c7975d"]}]' --parameters '{"action":["configure"],"mode":["ec2"],"optionalConfigurationSource":["ssm"],"optionalConfigurationLocation":["AmazonCloudWatch-Windows"],"optionalRestart":["yes"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region eu-west-1
+
+
+$AZ          = try {Invoke-RestMethod http://169.254.169.254/latest/meta-data/placement/availability-zone} catch {$_.Exception.Response}
+$Region      = $AZ.Substring(0,$AZ.Length-1)
+
+If ($Region) {
+    Write-Host "1. Metadata service is accessible"
+} 
+else         {
+    Write-Host "1. Metadata service is unavailable!"
+    $Region = eu-west-1
+}
+
+# Get the correct Connection URL for my region
+$ConnectionURL = "ssm.$Region.amazonaws.com" 
+$Port          = 443
+$TestEndPoint  = New-Object System.Net.Sockets.TcpClient;
+Try {
+    Write-Host "Connecting to $ConnectionURL on port $Port (TCP).."
+    $TestEndPoint.Connect($ConnectionURL, $Port)
+    Write-Host "2. This instance can reach the public SSM endpoint for $region. Connection successful!"
+} Catch {
+    Write-Host "2. This instance cannot reach the public SSM endpoint for this region. Connection failed"
+} Finally { 
+    $TestEndPoint.Dispose() 
+}
+
+
+$Role        = Try {Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/iam/security-credentials} catch {$_.Exception.Response.statuscode.value_}
+if (!$Role) {Write-Host "3. There is no IAM role assigned or it cannot be determined due to metadata unavailability!"} 
+else        {Write-Host "3. The IAM role assigned to the instance is $role. Please ensure that the role has sufficient permissions."} 
+
+
+& "C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1" -a fetch-config -m ec2 -s -c ssm:AmazonCloudWatch-Windows
+
