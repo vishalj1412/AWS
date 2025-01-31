@@ -1,0 +1,406 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Automatically Create Alarms for EC2 instances, RDS Instances and ALB.
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: 'Customer Name and SNS Topic'
+        Parameters:
+          - CustomerName
+          - CreateAutoAlarmTag
+          - SNSTopicARN
+      - Label:
+          default: 'EC2 Parameters'
+        Parameters:
+          - AlarmEc2CpuHighThreshold
+          - AlarmEc2MemoryHighThreshold
+          - AlarmEc2DiskLowThreshold
+      - Label:
+          default: 'RDS Parameters'
+        Parameters:
+          - AlarmRdsCpuHighThreshold
+          - AlarmRdsMemoryFreeThreshold
+          - AlarmRdsDiskLowThreshold
+          - AlarmRdsDiskQueueDepthThreshold
+          - AlarmRdsDbConnThreshold
+      - Label:
+          default: 'ALB Parameters'
+        Parameters:
+          - AlarmAlbTargetResTimeThreshold
+          - AlarmAlbUnhealthyHostThreshold
+          - AlarmAlbHttpTarget3xxThreshold
+          - AlarmAlbHttpTarget4xxThreshold
+          - AlarmAlbHttpTarget5xxThreshold
+
+Mappings:
+  SourceCode:
+    us-east-1: 
+      Bucket: coe-rapyder-solutions
+    us-east-2: 
+      Bucket: coe-rapyder-solutions-ohio
+    ap-south-1: 
+      Bucket: coe-rapyder-solutions-mumbai
+    ap-southeast-1: 
+      Bucket: coe-rapyder-solutions-singapore
+    ap-south-2: 
+      Bucket: coe-rapyder-solutions-hyderabad
+  General:
+    S3Bucket:
+      KeyPrefix: cw-auto-alarms/
+
+Parameters:
+  CustomerName:
+    Description: Enter the customer name without blank space
+    Type: String
+  CreateAutoAlarmTag:
+    Description: Select ENABLE to create tag-based auto alarms.
+    Default: "DISABLE"
+    Type: String
+    AllowedValues: 
+      - "ENABLE"
+      - "DISABLE"
+  SNSTopicARN:
+    Description: Enter the ARN of SNS topic for Alarm
+    Type: String
+  AlarmEc2MemoryHighThreshold:
+    Description: Alarm Ec2 Memory Used Threshold Percentage
+    Type: String
+    Default: "75"
+    AllowedPattern: "[0-9]*"
+  AlarmEc2CpuHighThreshold:
+    Description: Alarm Ec2 CPU Utilization High Threshold Percentage
+    Type: String
+    Default: "75"
+    AllowedPattern: "[0-9]*"
+  AlarmEc2DiskLowThreshold:
+    Description: Alarm Ec2 Disk Free Threshold Percentage
+    Type: String
+    Default: "20"
+    AllowedPattern: "[0-9]*"
+  AlarmRdsCpuHighThreshold:
+    Description: Alarm Rds Cpu Utilization High Threshold Percentage
+    Type: String
+    Default: "75"
+    AllowedPattern: "[0-9]*"
+  AlarmRdsMemoryFreeThreshold:
+    Description: Alarm Rds Memory Free Threshold Percentage
+    Type: String
+    Default: "20"
+    AllowedPattern: "[0-9]*"
+  AlarmRdsDiskLowThreshold:
+    Description: Alarm Rds Disk Free Threshold Percentage
+    Type: String
+    Default: "20"
+    AllowedPattern: "[0-9]*"
+  AlarmRdsDbConnThreshold:
+    Description: Alarm Rds DB Connections Threshold Count
+    Type: String
+    Default: "80"
+    AllowedPattern: "[0-9]*"
+  AlarmRdsDiskQueueDepthThreshold:
+    Description: Alarm Rds Disk Queue Depth Threshold Percentage
+    Type: String
+    Default: "60"
+    AllowedPattern: "[0-9]*"
+  AlarmAlbTargetResTimeThreshold:
+    Description: Alarm Alb Target Response Threshold Time in Seconds
+    Type: String
+    Default: "5"
+    AllowedPattern: "[0-9]*"
+  AlarmAlbUnhealthyHostThreshold:
+    Description: Alarm Alb Unhealthy Host Threshold Count
+    Type: String
+    Default: "1"
+    AllowedPattern: "[0-9]*"
+  AlarmAlbHttpTarget5xxThreshold:
+    Description: Alarm Alb Http Target 5xx Threshold Count
+    Type: String
+    Default: "500"
+    AllowedPattern: "[0-9]*"
+  AlarmAlbHttpTarget3xxThreshold:
+    Description: Alarm Alb Http Target 3xx Threshold Count
+    Type: String
+    Default: "300"
+    AllowedPattern: "[0-9]*"
+  AlarmAlbHttpTarget4xxThreshold:
+    Description: Alarm Alb Http Target 4xx Threshold Count
+    Type: String
+    Default: "400"
+    AllowedPattern: "[0-9]*"
+  # AlarmNotificationARN:
+  #   Description: Enter the Amazon SNS Notification ARN for alarm notifications, leave blank to disable notifications.
+  #   Type: String
+  #   Default: "" 
+
+# Conditions:
+#   ConfigureAlarmNotifications: !Not [!Equals ["", !Ref AlarmNotificationARN]]
+
+Resources:
+
+  BasicParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: AmazonCloudWatch-linux
+      Type: String
+      Value: '{
+                  "agent": {
+                    "metrics_collection_interval": 60,
+                    "run_as_user": "root"
+                  },
+                  "metrics": {
+                    "aggregation_dimensions" : [["AutoScalingGroupName"]],
+                    "append_dimensions": {
+                      "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+                      "InstanceId": "${aws:InstanceId}"
+                    },
+                    "metrics_collected": {
+                      "disk": {
+                        "measurement": [
+                          "used_percent"
+                        ],
+                        "metrics_collection_interval": 60,
+                        "resources": [
+                          "*"
+                        ],
+                        "ignore_file_system_types":["sysfs","devtmpfs","tmpfs","squashfs","vfat"],
+                        "drop_device": true
+                      },
+                      "mem": {
+                        "measurement": [
+                          "mem_used_percent"
+                        ],
+                        "metrics_collection_interval": 60
+                      }
+                    }
+                  }
+                }'
+      
+  BasicParameterWindows:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: 'AmazonCloudWatch-windows'
+      Type: String
+      Value: '{
+                  "metrics": {
+                    "aggregation_dimensions" : [["AutoScalingGroupName"]],
+                    "append_dimensions": {
+                      "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+                      "InstanceId": "${aws:InstanceId}"
+                    },
+                    "metrics_collected": {
+                      "Memory": {
+                        "measurement": [
+                          "% Committed Bytes In Use"
+                        ],
+                        "metrics_collection_interval": 60
+                      },
+                      "LogicalDisk": {
+                      "measurement": [
+                        "% Free Space"
+                      ],
+                        "metrics_collection_interval": 60,
+                        "resources": [
+                          "*"
+                        ]
+                      }
+                    }
+                  }
+                }'
+        
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Join:
+            - ""
+            - - Fn::FindInMap:
+                - SourceCode
+                - Ref: AWS::Region
+                - Bucket
+        S3Key: "cw-auto-alarms/lambda/cw-auto-alarms-lambda-v1.5.zip"
+      FunctionName: "CloudWatchAutoAlarms"
+      Handler: index.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt CloudWatchAutoAlarmLambdaRole.Arn
+      MemorySize: 128
+      Timeout: 600
+      Environment:
+        Variables:
+          CUSTOMER_NAME : !Ref CustomerName
+          CUSTOMER_NAME_DESCRIPTION : !Ref CustomerName
+          CREATE_AUTO_ALARM : !Ref CreateAutoAlarmTag
+          DEFAULT_ALARM_SNS_TOPIC_ARN: !Ref SNSTopicARN
+          REGION: !Ref "AWS::Region"
+          AlarmEc2CpuHighThreshold: !Ref AlarmEc2CpuHighThreshold
+          AlarmEc2MemoryHighThreshold: !Ref AlarmEc2MemoryHighThreshold
+          AlarmEc2DiskLowThreshold: !Ref AlarmEc2DiskLowThreshold
+          AlarmRdsCpuHighThreshold: !Ref AlarmRdsCpuHighThreshold
+          AlarmRdsMemoryFreeThreshold: !Ref AlarmRdsMemoryFreeThreshold
+          AlarmRdsDiskLowThreshold: !Ref AlarmRdsDiskLowThreshold 
+          AlarmRdsDbConnThreshold: !Ref AlarmRdsDbConnThreshold
+          AlarmRdsDiskQueueDepthThreshold: !Ref AlarmRdsDiskQueueDepthThreshold
+          AlarmAlbTargetResTimeThreshold: !Ref AlarmAlbTargetResTimeThreshold
+          AlarmAlbUnhealthyHostThreshold: !Ref AlarmAlbUnhealthyHostThreshold 
+          AlarmAlbHttpTarget5xxThreshold: !Ref AlarmAlbHttpTarget5xxThreshold
+          AlarmAlbHttpTarget3xxThreshold: !Ref AlarmAlbHttpTarget3xxThreshold 
+          AlarmAlbHttpTarget4xxThreshold: !Ref AlarmAlbHttpTarget4xxThreshold 
+
+     
+  CloudWatchAutoAlarmLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: "Lambda_Permissions"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DescribeAlarmHistory
+                  - cloudwatch:EnableAlarmActions
+                  - cloudwatch:DisableAlarmActions
+                  - cloudwatch:DescribeAlarmsForMetric
+                  - cloudwatch:SetAlarmState
+                  - cloudwatch:PutCompositeAlarm
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceTypes
+                  - ec2:DescribeImages
+                  - ec2:CreateTags
+                  - rds:DescribeDBInstances
+                  - elasticloadbalancing:DescribeTargetGroups
+                  - elasticloadbalancing:DescribeLoadBalancers
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                  - ssm:DescribeParameters
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - ssm:GetCommandInvocation
+                  - ssm:GetInventory
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                Resource: "*"
+
+  LambdaInvokePermissionCloudwatchEventsEC2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt
+        - LambdaFunction
+        - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt
+        - CloudWatchAutoAlarmCloudwatchEventEC2
+        - Arn
+
+  CloudWatchAutoAlarmCloudwatchEventEC2:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: Initiate-CloudWatchAutoAlarmsEC2
+      Description: Creates CloudWatch alarms on instance start via Lambda CloudWatchAutoAlarms and deletes them on instance termination.
+      EventPattern: '
+        {
+          "source": [
+            "aws.ec2"
+          ],
+          "detail-type": [
+            "EC2 Instance State-change Notification"
+          ],
+          "detail": {
+            "state": [
+              "running",
+              "terminated"
+            ]
+          }
+        }'
+      State: DISABLED
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: LATEST
+
+  LambdaInvokePermissionCloudwatchEventsRDS:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt
+        - LambdaFunction
+        - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt
+        - CloudWatchAutoAlarmCloudwatchEventRDS
+        - Arn
+
+  CloudWatchAutoAlarmCloudwatchEventRDS:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: Initiate-CloudWatchAutoAlarmsRDS
+      Description: Creates CloudWatch alarms on create Rds instance and deletes them on deletion.
+      EventPattern: '
+        {
+          "source": ["aws.rds"],
+          "detail": {
+            "EventID": ["RDS-EVENT-0088", "RDS-EVENT-0154", "RDS-EVENT-0005", "RDS-EVENT-0003"]
+          }
+        }'
+      State: DISABLED
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: LATEST
+
+  LambdaInvokePermissionCloudwatchEventsALB:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt
+        - LambdaFunction
+        - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt
+        - CloudWatchAutoAlarmCloudwatchEventALB
+        - Arn
+
+  CloudWatchAutoAlarmCloudwatchEventALB:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: Initiate-CloudWatchAutoAlarmsALB
+      Description: Deletes CloudWatch alarms related to ALB.
+      EventPattern: '
+         {
+          "source": ["aws.elasticloadbalancing"],
+          "detail-type": ["AWS API Call via CloudTrail"],
+          "detail": {
+            "eventSource": ["elasticloadbalancing.amazonaws.com"],
+            "eventName": ["DeleteLoadBalancer"]
+          }
+        }'
+      State: DISABLED
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: LATEST
